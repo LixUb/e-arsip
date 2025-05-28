@@ -96,6 +96,8 @@ function formatFileSize($bytes) {
         <header class="header">
             <h1>Electronic Document Archive</h1>
             <p>Organize, store, and manage your digital documents,</p>
+            <a href="login.php" class="btn btn-primary" style="position: absolute; top: 10px; right: 10px;">Login</a>
+
         </header>
 
         <?php if (!empty($message)): ?>
@@ -125,7 +127,7 @@ function formatFileSize($bytes) {
                     <div class="form-group">
                         <label for="tags" class="form-label">Tags (Optional)</label>
                         <input type="text" name="tags" id="tags" class="form-input" placeholder="Enter tags separated by commas">
-                        <small style="color: #6b7280; font-size: 0.875rem; margin-top: 0.25rem;">Rayhanul Hafiz</small>
+                        <small style="color: #6b7280; font-size: 0.875rem; margin-top: 0.25rem;"></small>
                     </div>
                 </div>
 
