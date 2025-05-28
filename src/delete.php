@@ -1,90 +1,83 @@
 <?php
-// Enhanced document deletion script (delete.php)
+// delete.php - Handle file deletion with security
 session_start();
 require_once 'config/database.php';
 
-$message = "";
-$messageType = "success";
-
-if (isset($_GET['file'])) {
-    $fileName = basename($_GET['file']);
-    $filePath = __DIR__ . '/uploads/' . $fileName;
-
-    try {
-        // First, get document info from database
-        $stmt = $pdo->prepare("SELECT id, filename, original_filename FROM documents WHERE filename = :filename");
-        $stmt->execute([':filename' => $fileName]);
-        $document = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($document) {
-            // Begin transaction for data consistency
-            $pdo->beginTransaction();
-
-            try {
-                // Delete category relationships first (foreign key constraint)
-                $deleteRelationsStmt = $pdo->prepare("DELETE FROM document_category_relations WHERE document_id = :document_id");
-                $deleteRelationsStmt->execute([':document_id' => $document['id']]);
-
-                // Delete document record from database
-                $deleteDocStmt = $pdo->prepare("DELETE FROM documents WHERE id = :id");
-                $deleteResult = $deleteDocStmt->execute([':id' => $document['id']]);
-
-                if ($deleteResult) {
-                    // Commit database transaction
-                    $pdo->commit();
-
-                    // Now try to delete the physical file
-                    if (file_exists($filePath)) {
-                        if (unlink($filePath)) {
-                            $message = "Document '{$document['original_filename']}' deleted successfully.";
-                            $messageType = "success";
-                        } else {
-                            $message = "Document removed from database, but physical file could not be deleted.";
-                            $messageType = "success"; // Still consider success since DB is clean
-                        }
-                    } else {
-                        $message = "Document '{$document['original_filename']}' removed from database (file was already missing).";
-                        $messageType = "success";
-                    }
-                } else {
-                    $pdo->rollBack();
-                    $message = "Error removing document from database.";
-                    $messageType = "error";
-                }
-            } catch (Exception $e) {
-                $pdo->rollBack();
-                $message = "Error deleting document: " . $e->getMessage();
-                $messageType = "error";
-            }
-        } else {
-            // Document not found in database, check if physical file exists
-            if (file_exists($filePath)) {
-                if (unlink($filePath)) {
-                    $message = "Orphaned file '$fileName' deleted successfully.";
-                    $messageType = "success";
-                } else {
-                    $message = "Error deleting orphaned file '$fileName'.";
-                    $messageType = "error";
-                }
-            } else {
-                $message = "Document '$fileName' does not exist.";
-                $messageType = "error";
-            }
-        }
-    } catch (PDOException $e) {
-        $message = "Database error: " . $e->getMessage();
-        $messageType = "error";
-    }
-} else {
-    $message = "No file specified for deletion.";
-    $messageType = "error";
+// Validate request
+if (!isset($_GET['file']) || empty($_GET['file'])) {
+    $_SESSION['message'] = 'Error: No file specified for deletion.';
+    $_SESSION['messageType'] = 'error';
+    header('Location: index.php');
+    exit;
 }
 
-// Store message in session
-$_SESSION['message'] = $message;
-$_SESSION['messageType'] = $messageType;
+$requestedFilename = $_GET['file'];
 
-// Redirect back to index page
+// Security: Sanitize the filename
+$requestedFilename = basename($requestedFilename);
+if (empty($requestedFilename) || $requestedFilename === '.' || $requestedFilename === '..') {
+    $_SESSION['message'] = 'Error: Invalid file name.';
+    $_SESSION['messageType'] = 'error';
+    header('Location: index.php');
+    exit;
+}
+
+try {
+    // Begin transaction
+    $pdo->beginTransaction();
+    
+    // Look up file in database
+    $stmt = $pdo->prepare("SELECT * FROM documents WHERE filename = ? LIMIT 1");
+    $stmt->execute([$requestedFilename]);
+    $document = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$document) {
+        throw new Exception('File not found in database.');
+    }
+    
+    $filePath = $document['file_path'];
+    $originalFilename = $document['original_filename'];
+    $documentId = $document['id'];
+    
+    // Delete category relations first (foreign key constraint)
+    $deleteCategoryRelations = $pdo->prepare("DELETE FROM document_category_relations WHERE document_id = ?");
+    $deleteCategoryRelations->execute([$documentId]);
+    
+    // Delete document record from database
+    $deleteDocument = $pdo->prepare("DELETE FROM documents WHERE id = ?");
+    $result = $deleteDocument->execute([$documentId]);
+    
+    if (!$result) {
+        throw new Exception('Failed to delete document from database.');
+    }
+    
+    // Delete physical file
+    if (file_exists($filePath)) {
+        if (!unlink($filePath)) {
+            // If we can't delete the file, log the error but don't fail the operation
+            error_log("Warning: Could not delete physical file: " . $filePath);
+        }
+    }
+    
+    // Commit transaction
+    $pdo->commit();
+    
+    // Log deletion activity
+    error_log("File deleted: " . $originalFilename . " (" . $requestedFilename . ") by IP: " . $_SERVER['REMOTE_ADDR']);
+    
+    $_SESSION['message'] = 'Document deleted successfully: ' . htmlspecialchars($originalFilename);
+    $_SESSION['messageType'] = 'success';
+    
+} catch (Exception $e) {
+    // Rollback transaction
+    $pdo->rollBack();
+    
+    error_log("Delete error: " . $e->getMessage());
+    $_SESSION['message'] = 'Error: Failed to delete document. ' . $e->getMessage();
+    $_SESSION['messageType'] = 'error';
+}
+
+// Redirect back to main page
 header('Location: index.php');
 exit;
 ?>

@@ -1,25 +1,21 @@
 <?php
-// Enhanced Document Archiving Application (index.php)
 session_start();
 require_once 'config/database.php';
 
 $message = "";
 $messageType = "success";
 
-// Handle session messages
 if (isset($_SESSION['message'])) {
     $message = $_SESSION['message'];
     $messageType = isset($_SESSION['messageType']) ? $_SESSION['messageType'] : 'success';
     unset($_SESSION['message'], $_SESSION['messageType']);
 }
 
-// Handle URL messages
 if (isset($_GET['message'])) {
     $message = $_GET['message'];
     $messageType = strpos($message, 'Error') !== false ? 'error' : 'success';
 }
 
-// Fetch documents with enhanced query
 $searchTerm = isset($_GET['search']) ? trim($_GET['search']) : '';
 $categoryFilter = isset($_GET['category']) ? $_GET['category'] : '';
 
@@ -51,8 +47,6 @@ try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Fetch categories for filter dropdown
     $categoriesStmt = $pdo->query("SELECT * FROM document_categories ORDER BY name");
     $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
     
@@ -63,7 +57,6 @@ try {
     $categories = [];
 }
 
-// Helper function to get file icon class
 function getFileIcon($filename) {
     $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
     $iconMap = [
@@ -77,7 +70,6 @@ function getFileIcon($filename) {
     return isset($iconMap[$extension]) ? $iconMap[$extension] : 'default';
 }
 
-// Helper function to format file size
 function formatFileSize($bytes) {
     if ($bytes >= 1073741824) {
         return number_format($bytes / 1073741824, 2) . ' GB';
@@ -95,26 +87,23 @@ function formatFileSize($bytes) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document Archive - Modern File Management</title>
+    <title>E-Document Archive -  File Management</title>
     <link rel="stylesheet" href="styles/style.css">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233b82f6'><path d='M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z' /></svg>">
 </head>
 <body>
     <div class="container">
-        <!-- Header Section -->
         <header class="header">
-            <h1>Document Archive</h1>
-            <p>Organize, store, and manage your digital documents with elegance</p>
+            <h1>Electronic Document Archive</h1>
+            <p>Organize, store, and manage your digital documents,</p>
         </header>
 
-        <!-- Message Display -->
         <?php if (!empty($message)): ?>
             <div class="message <?php echo $messageType === 'error' ? 'error' : ''; ?>">
                 <?php echo htmlspecialchars($message); ?>
             </div>
         <?php endif; ?>
 
-        <!-- Upload Section -->
         <section class="upload-section">
             <form action="upload.php" method="POST" enctype="multipart/form-data" class="upload-form" id="uploadForm">
                 <div class="file-input-wrapper">
@@ -136,7 +125,7 @@ function formatFileSize($bytes) {
                     <div class="form-group">
                         <label for="tags" class="form-label">Tags (Optional)</label>
                         <input type="text" name="tags" id="tags" class="form-input" placeholder="Enter tags separated by commas">
-                        <small style="color: #6b7280; font-size: 0.875rem; margin-top: 0.25rem;">e.g., invoice, 2024, important</small>
+                        <small style="color: #6b7280; font-size: 0.875rem; margin-top: 0.25rem;">Rayhanul Hafiz</small>
                     </div>
                 </div>
 
@@ -162,7 +151,6 @@ function formatFileSize($bytes) {
             </form>
         </section>
 
-        <!-- Documents Section -->
         <section class="documents-section">
             <div class="section-header">
                 <h2 class="section-title">
