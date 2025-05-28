@@ -402,11 +402,7 @@
         </div>
 
         <!-- Demo credentials info -->
-        <div class="demo-credentials">
-            <strong>Demo Credentials:</strong><br>
-            Username: <strong>admin</strong><br>
-            Password: <strong>admin123</strong>
-        </div>
+       
 
         <!-- Message display area -->
         <div id="messageArea"></div>
